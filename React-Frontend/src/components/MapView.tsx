@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, CircleMarker 
 import L from 'leaflet';
 import Papa from 'papaparse';
 import { RoadPoint, Destination, RouteInfo } from '../types';
-import { destinations } from '../data/destinations';
+import { destinations } from '../data/destinations.ts';
 import { findNearestRoadPoint, findShortestPath } from '../utils/pathfinding';
 import { getCurrentLocation } from '../utils/geolocation';
 import roadPathCSV from '../data/road_path.csv?url';
@@ -124,7 +124,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
               lat: parseFloat(row.latitudinal),
               lon: parseFloat(row.longitudinal),
               colour: row.colour as 'pink' | 'blue',
-              distance: parseInt(row.distance) || 0
+              series: parseInt(row.series) || 0
             })).filter(point => !isNaN(point.lat) && !isNaN(point.lon));
             
             setRoadPoints(points);
@@ -146,7 +146,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
       return;
     }
 
-    const destination = destinations.find(d => 
+    const destination = destinations.find((d: Destination) => 
       d.name.toLowerCase().includes(selectedDestination.toLowerCase())
     );
 
@@ -190,7 +190,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
 
-        {/* Road points as dots */}
+        {/* Road points as dots with click functionality */}
         {pinkPoints.map((point) => (
           <CircleMarker
             key={`pink-${point.sno}`}
@@ -201,6 +201,11 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
             weight={1}
             opacity={1}
             fillOpacity={0.8}
+            eventHandlers={{
+              click: () => {
+                alert(`Point S.no: ${point.sno}\nConnects to: ${point.series}`);
+              }
+            }}
           />
         ))}
         
@@ -214,11 +219,16 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
             weight={1}
             opacity={1}
             fillOpacity={0.8}
+            eventHandlers={{
+              click: () => {
+                alert(`Point S.no: ${point.sno}\nConnects to: ${point.series}`);
+              }
+            }}
           />
         ))}
 
         {/* Destination markers */}
-        {destinations.map((dest) => (
+        {destinations.map((dest: Destination) => (
           <Marker
             key={dest.id}
             position={[dest.lat, dest.lon]}
@@ -292,7 +302,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
       {activeRoute && (
         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg z-[1000]">
           <h4 className="font-semibold text-sm mb-1">Active Route</h4>
-          <p className="text-xs text-gray-600">Distance: {(activeRoute.distance / 100).toFixed(1)} m</p>
+          <p className="text-xs text-gray-600">Distance: {(activeRoute.distance / 1000).toFixed(2)} km</p>
           <p className="text-xs text-gray-600">Points: {activeRoute.path.length}</p>
           <div className="flex items-center gap-2 mt-1">
             <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>

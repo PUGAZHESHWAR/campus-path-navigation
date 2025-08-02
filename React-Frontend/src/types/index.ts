@@ -3,7 +3,7 @@ export interface RoadPoint {
   lat: number;
   lon: number;
   colour: 'pink' | 'blue';
-  distance: number;
+  series: number;
 }
 
 export interface Destination {

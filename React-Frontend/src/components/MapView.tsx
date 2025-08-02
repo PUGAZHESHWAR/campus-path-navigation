@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, CircleMarker } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, CircleMarker, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import { RoadPoint, Destination, RouteInfo, Edge } from '../types';
 import { destinations } from '../data/destinations.ts';
@@ -7,6 +7,7 @@ import { findNearestRoadPoint, findShortestPath } from '../utils/pathfinding';
 import { getCurrentLocation } from '../utils/geolocation';
 import roadPathData from '../data/road_path.json';
 import edgesData from '../data/edges_with_distances.json';
+import 'leaflet/dist/leaflet.css';
 
 // Fix for default markers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -105,11 +106,50 @@ const FrequencyCircle: React.FC<{
   return null;
 };
 
+// Component to handle map zoom and fit bounds
+const MapController: React.FC<{ 
+  activeRoute: RouteInfo | null; 
+  currentLocation: [number, number] | null;
+  selectedDestination: string | null;
+}> = ({ activeRoute, currentLocation, selectedDestination }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    // Force map to invalidate size after a short delay
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
+    if (activeRoute && activeRoute.path.length > 0) {
+      // Create bounds that include the entire route
+      const bounds = L.latLngBounds([
+        ...activeRoute.path.map(point => [point.lat, point.lon] as [number, number]),
+        ...(currentLocation ? [currentLocation] : [])
+      ]);
+
+      // Add some padding to the bounds
+      map.fitBounds(bounds, { 
+        padding: [20, 20],
+        maxZoom: 18,
+        animate: true
+      });
+    } else if (currentLocation) {
+      // If no route, just center on current location
+      map.setView(currentLocation, 16, { animate: true });
+    }
+
+    return () => clearTimeout(timer);
+  }, [activeRoute, currentLocation, selectedDestination, map]);
+
+  return null;
+};
+
 const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation }) => {
   const [roadPoints, setRoadPoints] = useState<RoadPoint[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [activeRoute, setActiveRoute] = useState<RouteInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mapKey, setMapKey] = useState(0); // Force re-render
 
   useEffect(() => {
     const loadRoadData = async () => {
@@ -121,6 +161,8 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
         setEdges(edgesData as Edge[]);
         
         setIsLoading(false);
+        // Force map re-render after data loads
+        setMapKey(prev => prev + 1);
       } catch (error) {
         console.error('Error loading road data:', error);
         setIsLoading(false);
@@ -160,24 +202,44 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
     );
   }
 
-  const center: [number, number] = roadPoints.length > 0 
-    ? [roadPoints[0].lat, roadPoints[0].lon] 
-    : [28.6139, 77.2090];
+  const center: [number, number] = currentLocation || [12.193116, 79.084481];
 
   const pinkPoints = roadPoints.filter(p => p.colour === 'pink');
   const bluePoints = roadPoints.filter(p => p.colour === 'blue');
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative" style={{ minHeight: '400px' }}>
       <MapContainer
+        key={mapKey}
         center={center}
         zoom={16}
-        className="w-full h-full rounded-lg shadow-lg"
-        zoomControl={false}
+        className="w-full h-full"
+        zoomControl={true}
+        style={{ 
+          height: '100%', 
+          width: '100%',
+          minHeight: '400px'
+        }}
+        attributionControl={true}
+        doubleClickZoom={true}
+        scrollWheelZoom={true}
+        dragging={true}
+        touchZoom={true}
+        boxZoom={true}
+        keyboard={true}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          maxZoom={19}
+          minZoom={3}
+        />
+
+        {/* Map Controller for zoom and bounds */}
+        <MapController 
+          activeRoute={activeRoute}
+          currentLocation={currentLocation}
+          selectedDestination={selectedDestination}
         />
 
         {/* Road points as dots with click functionality */}
@@ -253,7 +315,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
         )}
 
         {/* Active route with blinking markers */}
-        {activeRoute && (
+        {activeRoute && activeRoute.path.length > 0 && (
           <>
             <Polyline
               positions={activeRoute.path.map(p => [p.lat, p.lon] as [number, number])}
@@ -288,10 +350,10 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
         )}
       </MapContainer>
 
-      {/* Route info overlay */}
-      {activeRoute && (
-        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg z-[1000]">
-          <h4 className="font-semibold text-sm mb-1">Active Route</h4>
+      {/* Route info overlay - positioned inside map */}
+      {activeRoute && activeRoute.path.length > 0 && (
+        <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg z-[1000] border border-gray-200">
+          <h4 className="font-semibold text-sm mb-1 text-gray-800">Active Route</h4>
           <p className="text-xs text-gray-600">Distance: {(activeRoute.distance / 1000).toFixed(2)} km</p>
           <p className="text-xs text-gray-600">Points: {activeRoute.path.length}</p>
           <div className="flex items-center gap-2 mt-1">

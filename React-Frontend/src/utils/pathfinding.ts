@@ -1,4 +1,4 @@
-import { RoadPoint, Destination, RouteInfo } from '../types';
+import { RoadPoint, Destination, RouteInfo, Edge } from '../types';
 import { calculateDistance } from './geolocation';
 
 export const findNearestRoadPoint = (
@@ -20,76 +20,77 @@ export const findNearestRoadPoint = (
   return nearestPoint;
 };
 
-// Build adjacency list for road network using series connections
-const buildRoadGraph = (roadPoints: RoadPoint[]): Map<number, { node: RoadPoint; distance: number }[]> => {
-  const graph = new Map<number, { node: RoadPoint; distance: number }[]>();
+// Build adjacency list for road network using edges data
+const buildRoadGraph = (roadPoints: RoadPoint[], edges: Edge[]): Map<string, { node: RoadPoint; distance: number }[]> => {
+  const graph = new Map<string, { node: RoadPoint; distance: number }[]>();
   
   // Initialize graph
   roadPoints.forEach(point => {
-    graph.set(point.sno, []);
+    graph.set(point.id, []);
   });
 
-  // Build connections based on the series field
-  roadPoints.forEach(point => {
-    // Find the node that this point connects to
-    const connectedPoint = roadPoints.find(p => p.sno === point.series);
-    if (connectedPoint) {
+  // Build connections based on edges data
+  edges.forEach(edge => {
+    const fromPoint = roadPoints.find(p => p.id === edge.from);
+    const toPoint = roadPoints.find(p => p.id === edge.to);
+    
+    if (fromPoint && toPoint) {
       // Calculate actual distance between connected points
-      const distance = calculateDistance(point.lat, point.lon, connectedPoint.lat, connectedPoint.lon);
+      const distance = calculateDistance(fromPoint.lat, fromPoint.lon, toPoint.lat, toPoint.lon);
       
       // Add bidirectional connection
-      graph.get(point.sno)?.push({ node: connectedPoint, distance });
-      graph.get(connectedPoint.sno)?.push({ node: point, distance });
+      graph.get(fromPoint.id)?.push({ node: toPoint, distance });
+      graph.get(toPoint.id)?.push({ node: fromPoint, distance });
     }
   });
 
   return graph;
 };
 
-// Dijkstra's algorithm implementation using series connections
+// Dijkstra's algorithm implementation using edges data
 const dijkstra = (
-  startSno: number,
-  endSno: number,
+  startId: string,
+  endId: string,
   roadPoints: RoadPoint[],
-  graph: Map<number, { node: RoadPoint; distance: number }[]>
+  graph: Map<string, { node: RoadPoint; distance: number }[]>
 ): RoadPoint[] => {
-  const distances = new Map<number, number>();
-  const previous = new Map<number, number>();
-  const visited = new Set<number>();
+  const distances = new Map<string, number>();
+  const previous = new Map<string, string>();
+  const visited = new Set<string>();
   
   // Initialize distances
   roadPoints.forEach(point => {
-    distances.set(point.sno, Infinity);
+    distances.set(point.id, Infinity);
   });
-  distances.set(startSno, 0);
+  distances.set(startId, 0);
 
   while (visited.size < roadPoints.length) {
     // Find unvisited node with minimum distance
     let minDistance = Infinity;
-    let currentSno = -1;
+    let currentId = '';
     
     for (const point of roadPoints) {
-      if (!visited.has(point.sno) && distances.get(point.sno)! < minDistance) {
-        minDistance = distances.get(point.sno)!;
-        currentSno = point.sno;
+      if (!visited.has(point.id) && distances.get(point.id)! < minDistance) {
+        minDistance = distances.get(point.id)!;
+        currentId = point.id;
       }
     }
 
-    if (currentSno === -1) break; // No path found
+    if (currentId === '') break; // No path found
     
-    visited.add(currentSno);
+    visited.add(currentId);
     
     // If we reached the end, we're done
-    if (currentSno === endSno) break;
+    if (currentId === endId) break;
     
     // Update distances to neighbors using actual network connections
-    const neighbors = graph.get(currentSno) || [];
+    const neighbors = graph.get(currentId) || [];
     for (const neighbor of neighbors) {
-      if (!visited.has(neighbor.node.sno)) {
-        const newDistance = distances.get(currentSno)! + neighbor.distance;
-        if (newDistance < distances.get(neighbor.node.sno)!) {
-          distances.set(neighbor.node.sno, newDistance);
-          previous.set(neighbor.node.sno, currentSno);
+      if (!visited.has(neighbor.node.id)) {
+        const newDistance = distances.get(currentId)! + neighbor.distance;
+        if (newDistance < distances.get(neighbor.node.id)!) {
+          distances.set(neighbor.node.id, newDistance);
+          previous.set(neighbor.node.id, currentId);
         }
       }
     }
@@ -97,23 +98,23 @@ const dijkstra = (
 
   // Reconstruct path
   const path: RoadPoint[] = [];
-  let currentSno = endSno;
+  let currentId = endId;
   
-  while (currentSno !== startSno) {
-    const currentPoint = roadPoints.find(p => p.sno === currentSno);
+  while (currentId !== startId) {
+    const currentPoint = roadPoints.find(p => p.id === currentId);
     if (!currentPoint) break;
     
     path.unshift(currentPoint);
-    currentSno = previous.get(currentSno)!;
+    currentId = previous.get(currentId)!;
     
-    if (currentSno === undefined) {
+    if (currentId === undefined) {
       // No path found, return empty array
       return [];
     }
   }
   
   // Add start point
-  const startPoint = roadPoints.find(p => p.sno === startSno);
+  const startPoint = roadPoints.find(p => p.id === startId);
   if (startPoint) {
     path.unshift(startPoint);
   }
@@ -124,13 +125,14 @@ const dijkstra = (
 export const findShortestPath = (
   startPoint: RoadPoint,
   endPoint: RoadPoint,
-  roadPoints: RoadPoint[]
+  roadPoints: RoadPoint[],
+  edges: Edge[]
 ): RouteInfo => {
-  // Build road network graph using series connections
-  const graph = buildRoadGraph(roadPoints);
+  // Build road network graph using edges data
+  const graph = buildRoadGraph(roadPoints, edges);
   
   // Find shortest path using Dijkstra's algorithm
-  const path = dijkstra(startPoint.sno, endPoint.sno, roadPoints, graph);
+  const path = dijkstra(startPoint.id, endPoint.id, roadPoints, graph);
   
   // Calculate total distance using actual distances between connected points
   const distance = path.reduce((total, point, index) => {

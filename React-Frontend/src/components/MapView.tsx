@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
-import Papa from 'papaparse';
-import { RoadPoint, Destination, RouteInfo } from '../types';
+import { RoadPoint, Destination, RouteInfo, Edge } from '../types';
 import { destinations } from '../data/destinations.ts';
 import { findNearestRoadPoint, findShortestPath } from '../utils/pathfinding';
 import { getCurrentLocation } from '../utils/geolocation';
-import roadPathCSV from '../data/road_path.csv?url';
+import roadPathData from '../data/road_path.json';
+import edgesData from '../data/edges_with_distances.json';
 
 // Fix for default markers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -107,30 +107,20 @@ const FrequencyCircle: React.FC<{
 
 const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation }) => {
   const [roadPoints, setRoadPoints] = useState<RoadPoint[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
   const [activeRoute, setActiveRoute] = useState<RouteInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadRoadData = async () => {
       try {
-        const response = await fetch(roadPathCSV);
-        const csvText = await response.text();
+        // Load road points from JSON
+        setRoadPoints(roadPathData as RoadPoint[]);
         
-        Papa.parse(csvText, {
-          header: true,
-          complete: (results) => {
-            const points: RoadPoint[] = results.data.map((row: any) => ({
-              sno: parseInt(row['s.no']),
-              lat: parseFloat(row.latitudinal),
-              lon: parseFloat(row.longitudinal),
-              colour: row.colour as 'pink' | 'blue',
-              series: parseInt(row.series) || 0
-            })).filter(point => !isNaN(point.lat) && !isNaN(point.lon));
-            
-            setRoadPoints(points);
-            setIsLoading(false);
-          }
-        });
+        // Load edges from JSON
+        setEdges(edgesData as Edge[]);
+        
+        setIsLoading(false);
       } catch (error) {
         console.error('Error loading road data:', error);
         setIsLoading(false);
@@ -154,10 +144,10 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
 
     const startPoint = findNearestRoadPoint(currentLocation[0], currentLocation[1], roadPoints);
     const endPoint = findNearestRoadPoint(destination.lat, destination.lon, roadPoints);
-    const route = findShortestPath(startPoint, endPoint, roadPoints);
+    const route = findShortestPath(startPoint, endPoint, roadPoints, edges);
     
     setActiveRoute(route);
-  }, [selectedDestination, currentLocation, roadPoints]);
+  }, [selectedDestination, currentLocation, roadPoints, edges]);
 
   if (isLoading) {
     return (
@@ -193,7 +183,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
         {/* Road points as dots with click functionality */}
         {pinkPoints.map((point) => (
           <CircleMarker
-            key={`pink-${point.sno}`}
+            key={`pink-${point.id}`}
             center={[point.lat, point.lon]}
             radius={4}
             fillColor="#ec4899"
@@ -203,7 +193,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
             fillOpacity={0.8}
             eventHandlers={{
               click: () => {
-                alert(`Point S.no: ${point.sno}\nConnects to: ${point.series}`);
+                alert(`Point ID: ${point.id}\nColour: ${point.colour}`);
               }
             }}
           />
@@ -211,7 +201,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
         
         {bluePoints.map((point) => (
           <CircleMarker
-            key={`blue-${point.sno}`}
+            key={`blue-${point.id}`}
             center={[point.lat, point.lon]}
             radius={4}
             fillColor="#3b82f6"
@@ -221,7 +211,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
             fillOpacity={0.8}
             eventHandlers={{
               click: () => {
-                alert(`Point S.no: ${point.sno}\nConnects to: ${point.series}`);
+                alert(`Point ID: ${point.id}\nColour: ${point.colour}`);
               }
             }}
           />
@@ -275,7 +265,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
             
             {activeRoute.path.map((point, index) => (
               <BlinkingMarker
-                key={`route-${point.sno}`}
+                key={`route-${point.id}`}
                 position={[point.lat, point.lon]}
                 color={point.colour === 'pink' ? '#ec4899' : '#3b82f6'}
               />

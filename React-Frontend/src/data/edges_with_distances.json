@@ -1,0 +1,132 @@
+[
+  {
+    "from": "A1",
+    "to": "A2",
+    "distance": 1
+  },
+  {
+    "from": "A2",
+    "to": "A3",
+    "distance": 1
+  },
+  {
+    "from": "A3",
+    "to": "A4",
+    "distance": 1
+  },
+  {
+    "from": "A3",
+    "to": "A5",
+    "distance": 1
+  },
+  {
+    "from": "A4",
+    "to": "A6",
+    "distance": 1
+  },
+  {
+    "from": "A6",
+    "to": "A7",
+    "distance": 1
+  },
+  {
+    "from": "A7",
+    "to": "A8",
+    "distance": 1
+  },
+  {
+    "from": "A8",
+    "to": "A9",
+    "distance": 1
+  },
+  {
+    "from": "A9",
+    "to": "A10",
+    "distance": 1
+  },
+  {
+    "from": "A5",
+    "to": "A10",
+    "distance": 1
+  },
+  {
+    "from": "A7",
+    "to": "A11",
+    "distance": 1
+  },
+  {
+    "from": "A11",
+    "to": "A12",
+    "distance": 1
+  },
+  {
+    "from": "A11",
+    "to": "A13",
+    "distance": 2
+  },
+  {
+    "from": "A13",
+    "to": "A14",
+    "distance": 1
+  },
+  {
+    "from": "A14",
+    "to": "A15",
+    "distance": 1
+  },
+  {
+    "from": "A12",
+    "to": "A16",
+    "distance": 1
+  },
+  {
+    "from": "A16",
+    "to": "A17",
+    "distance": 1
+  },
+  {
+    "from": "A17",
+    "to": "A18",
+    "distance": 1
+  },
+  {
+    "from": "A10",
+    "to": "A19",
+    "distance": 1
+  },
+  {
+    "from": "A19",
+    "to": "A20",
+    "distance": 1
+  },
+  {
+    "from": "A20",
+    "to": "A21",
+    "distance": 1
+  },
+  {
+    "from": "A21",
+    "to": "A22",
+    "distance": 1
+  },
+  {
+    "from": "A16",
+    "to": "A23",
+    "distance": 2
+  },
+  {
+    "from": "A17",
+    "to": "A23",
+    "distance": 1
+  },
+  {
+    "from": "A23",
+    "to": "A24",
+    "distance": 1
+  },
+  {
+    "from": "A24",
+    "to": "A20",
+    "distance": 1
+  }
+]

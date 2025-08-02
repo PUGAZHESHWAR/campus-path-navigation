@@ -1,9 +1,14 @@
 export interface RoadPoint {
-  sno: number;
+  id: string;
   lat: number;
   lon: number;
   colour: 'pink' | 'blue';
-  series: number;
+}
+
+export interface Edge {
+  from: string;
+  to: string;
+  distance: number;
 }
 
 export interface Destination {

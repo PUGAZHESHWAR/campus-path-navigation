@@ -3,17 +3,20 @@ import { Mic, MicOff, Volume2 } from 'lucide-react';
 
 interface VoiceInputProps {
   onTranscript: (transcript: string) => void;
+  onListeningStart?: () => void;
+  onListeningStop?: () => void;
   isListening: boolean;
-  setIsListening: (listening: boolean) => void;
 }
 
 const VoiceInput: React.FC<VoiceInputProps> = ({ 
   onTranscript, 
-  isListening, 
-  setIsListening 
+  onListeningStart,
+  onListeningStop,
+  isListening 
 }) => {
   const [transcript, setTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(false);
+  const [internalListening, setInternalListening] = useState(false);
 
   useEffect(() => {
     setIsSupported('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
@@ -33,8 +36,9 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
     recognition.lang = 'en-US';
 
     recognition.onstart = () => {
-      setIsListening(true);
+      setInternalListening(true);
       setTranscript('');
+      onListeningStart?.();
     };
 
     recognition.onresult = (event) => {
@@ -54,7 +58,8 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
     };
 
     recognition.onend = () => {
-      setIsListening(false);
+      setInternalListening(false);
+      onListeningStop?.();
       if (transcript) {
         onTranscript(transcript);
       }
@@ -62,15 +67,20 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
 
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
-      setIsListening(false);
+      setInternalListening(false);
+      onListeningStop?.();
     };
 
     recognition.start();
   };
 
   const stopListening = () => {
-    setIsListening(false);
+    setInternalListening(false);
+    onListeningStop?.();
   };
+
+  // Use external isListening state if provided, otherwise use internal
+  const listening = isListening !== undefined ? isListening : internalListening;
 
   if (!isSupported) {
     return (
@@ -84,22 +94,22 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
   return (
     <div className="flex flex-col items-center space-y-2">
       <button
-        onClick={isListening ? stopListening : startListening}
+        onClick={listening ? stopListening : startListening}
         className={`relative p-4 rounded-full transition-all duration-300 transform hover:scale-105 ${
-          isListening 
+          listening 
             ? 'bg-red-500 text-white shadow-lg shadow-red-500/50 animate-pulse' 
             : 'bg-blue-500 text-white shadow-lg shadow-blue-500/50 hover:bg-blue-600'
         }`}
-        title={isListening ? 'Stop listening' : 'Start voice input'}
+        title={listening ? 'Stop listening' : 'Start voice input'}
       >
-        {isListening ? (
+        {listening ? (
           <MicOff className="w-6 h-6" />
         ) : (
           <Mic className="w-6 h-6" />
         )}
       </button>
       
-      {isListening && (
+      {listening && (
         <div className="text-center">
           <div className="flex space-x-1 justify-center mb-2">
             <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce"></div>
@@ -110,7 +120,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
         </div>
       )}
       
-      {transcript && !isListening && (
+      {transcript && !listening && (
         <div className="mt-2 p-2 bg-green-50 rounded-lg max-w-xs">
           <p className="text-xs text-green-800 font-medium">Heard: "{transcript}"</p>
         </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import Papa from 'papaparse';
 import { RoadPoint, Destination, RouteInfo } from '../types';
@@ -49,6 +49,55 @@ const BlinkingMarker: React.FC<{ position: [number, number]; color: string }> = 
     return () => {
       if (markerRef.current) {
         map.removeLayer(markerRef.current);
+      }
+    };
+  }, [position, color, map]);
+
+  return null;
+};
+
+const FrequencyCircle: React.FC<{ 
+  position: [number, number]; 
+  color: string; 
+  type: 'start' | 'end' 
+}> = ({ position, color, type }) => {
+  const map = useMap();
+  const circleRef = useRef<L.Circle | null>(null);
+  const [radius, setRadius] = useState(15);
+
+  useEffect(() => {
+    if (circleRef.current) {
+      map.removeLayer(circleRef.current);
+    }
+
+    const circle = L.circle(position, {
+      radius: radius,
+      fillColor: color,
+      color: color,
+      weight: 2,
+      opacity: 0.6,
+      fillOpacity: 0.3,
+      className: 'animate-pulse'
+    });
+
+    circle.addTo(map);
+    circleRef.current = circle;
+
+    // Animate the radius for frequency effect
+    const interval = setInterval(() => {
+      setRadius(prev => {
+        const newRadius = prev === 15 ? 25 : 15;
+        if (circleRef.current) {
+          circleRef.current.setRadius(newRadius);
+        }
+        return newRadius;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      if (circleRef.current) {
+        map.removeLayer(circleRef.current);
       }
     };
   }, [position, color, map]);
@@ -124,8 +173,8 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
     ? [roadPoints[0].lat, roadPoints[0].lon] 
     : [28.6139, 77.2090];
 
-  const pinkPoints = roadPoints.filter(p => p.colour === 'pink').map(p => [p.lat, p.lon] as [number, number]);
-  const bluePoints = roadPoints.filter(p => p.colour === 'blue').map(p => [p.lat, p.lon] as [number, number]);
+  const pinkPoints = roadPoints.filter(p => p.colour === 'pink');
+  const bluePoints = roadPoints.filter(p => p.colour === 'blue');
 
   return (
     <div className="w-full h-full relative">
@@ -140,24 +189,32 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
 
-        {/* Road paths */}
-        {pinkPoints.length > 0 && (
-          <Polyline
-            positions={pinkPoints}
+        {/* Road points as dots */}
+        {pinkPoints.map((point) => (
+          <CircleMarker
+            key={`pink-${point.sno}`}
+            center={[point.lat, point.lon]}
+            radius={4}
+            fillColor="#ec4899"
             color="#ec4899"
-            weight={6}
-            opacity={0.8}
+            weight={1}
+            opacity={1}
+            fillOpacity={0.8}
           />
-        )}
+        ))}
         
-        {bluePoints.length > 0 && (
-          <Polyline
-            positions={bluePoints}
+        {bluePoints.map((point) => (
+          <CircleMarker
+            key={`blue-${point.sno}`}
+            center={[point.lat, point.lon]}
+            radius={4}
+            fillColor="#3b82f6"
             color="#3b82f6"
-            weight={6}
-            opacity={0.8}
+            weight={1}
+            opacity={1}
+            fillOpacity={0.8}
           />
-        )}
+        ))}
 
         {/* Destination markers */}
         {destinations.map((dest) => (
@@ -212,6 +269,20 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
                 color={point.colour === 'pink' ? '#ec4899' : '#3b82f6'}
               />
             ))}
+
+            {/* Start point frequency circle */}
+            <FrequencyCircle
+              position={[activeRoute.path[0].lat, activeRoute.path[0].lon]}
+              color="#10b981"
+              type="start"
+            />
+
+            {/* End point frequency circle */}
+            <FrequencyCircle
+              position={[activeRoute.path[activeRoute.path.length - 1].lat, activeRoute.path[activeRoute.path.length - 1].lon]}
+              color="#ef4444"
+              type="end"
+            />
           </>
         )}
       </MapContainer>
@@ -222,6 +293,12 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
           <h4 className="font-semibold text-sm mb-1">Active Route</h4>
           <p className="text-xs text-gray-600">Distance: {(activeRoute.distance / 1000).toFixed(2)} km</p>
           <p className="text-xs text-gray-600">Points: {activeRoute.path.length}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+            <span className="text-xs text-gray-600">Start</span>
+            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse ml-2"></div>
+            <span className="text-xs text-gray-600">End</span>
+          </div>
         </div>
       )}
     </div>

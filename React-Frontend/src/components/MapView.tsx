@@ -123,7 +123,8 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
               sno: parseInt(row['s.no']),
               lat: parseFloat(row.latitudinal),
               lon: parseFloat(row.longitudinal),
-              colour: row.colour as 'pink' | 'blue'
+              colour: row.colour as 'pink' | 'blue',
+              distance: parseInt(row.distance) || 0
             })).filter(point => !isNaN(point.lat) && !isNaN(point.lon));
             
             setRoadPoints(points);
@@ -291,7 +292,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
       {activeRoute && (
         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg z-[1000]">
           <h4 className="font-semibold text-sm mb-1">Active Route</h4>
-          <p className="text-xs text-gray-600">Distance: {(activeRoute.distance / 1000).toFixed(2)} km</p>
+          <p className="text-xs text-gray-600">Distance: {(activeRoute.distance / 100).toFixed(1)} m</p>
           <p className="text-xs text-gray-600">Points: {activeRoute.path.length}</p>
           <div className="flex items-center gap-2 mt-1">
             <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>

@@ -1,128 +1,119 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, Volume2 } from 'lucide-react';
+import { Mic, MicOff, Volume2, X } from 'lucide-react';
 
 interface VoiceInputProps {
-  onTranscript: (transcript: string) => void;
-  onListeningStart?: () => void;
-  onListeningStop?: () => void;
+  onVoiceInput: (text: string) => void;
+  isSupported: boolean;
   isListening: boolean;
+  onStartListening: () => void;
+  onStopListening: () => void;
 }
 
-const VoiceInput: React.FC<VoiceInputProps> = ({ 
-  onTranscript, 
-  onListeningStart,
-  onListeningStop,
-  isListening 
+const VoiceInput: React.FC<VoiceInputProps> = ({
+  onVoiceInput,
+  isSupported,
+  isListening,
+  onStartListening,
+  onStopListening
 }) => {
-  const [transcript, setTranscript] = useState('');
-  const [isSupported, setIsSupported] = useState(false);
-  const [internalListening, setInternalListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const [recognition, setRecognition] = useState<any>(null);
 
   useEffect(() => {
-    setIsSupported('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
-  }, []);
-
-  const startListening = () => {
-    if (!isSupported) {
-      alert('Speech recognition is not supported in this browser.');
-      return;
-    }
+    if (!isSupported) return;
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+    const recognitionInstance = new SpeechRecognition();
 
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    recognitionInstance.continuous = false;
+    recognitionInstance.interimResults = true;
+    recognitionInstance.lang = 'en-US';
 
-    recognition.onstart = () => {
-      setInternalListening(true);
-      setTranscript('');
-      onListeningStart?.();
+    recognitionInstance.onstart = () => {
+      setInterimTranscript('');
     };
 
-    recognition.onresult = (event) => {
+    recognitionInstance.onresult = (event: any) => {
       let finalTranscript = '';
       let interimTranscript = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript;
+          finalTranscript += event.results[i][0].transcript;
         } else {
-          interimTranscript += transcript;
+          interimTranscript += event.results[i][0].transcript;
         }
       }
 
-      setTranscript(finalTranscript || interimTranscript);
-    };
+      setInterimTranscript(interimTranscript);
 
-    recognition.onend = () => {
-      setInternalListening(false);
-      onListeningStop?.();
-      if (transcript) {
-        onTranscript(transcript);
+      if (finalTranscript) {
+        onVoiceInput(finalTranscript);
+        setInterimTranscript('');
       }
     };
 
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      setInternalListening(false);
-      onListeningStop?.();
+    recognitionInstance.onend = () => {
+      setInterimTranscript('');
     };
 
-    recognition.start();
-  };
+    setRecognition(recognitionInstance);
+  }, [isSupported, onVoiceInput]);
 
-  const stopListening = () => {
-    setInternalListening(false);
-    onListeningStop?.();
+  const handleVoiceToggle = () => {
+    if (isListening) {
+      onStopListening();
+      if (recognition) {
+        recognition.stop();
+      }
+    } else {
+      onStartListening();
+      if (recognition) {
+        recognition.start();
+      }
+    }
   };
-
-  // Use external isListening state if provided, otherwise use internal
-  const listening = isListening !== undefined ? isListening : internalListening;
 
   if (!isSupported) {
     return (
-      <div className="flex items-center justify-center p-3 bg-gray-100 rounded-lg">
-        <Volume2 className="w-5 h-5 text-gray-400" />
-        <span className="ml-2 text-sm text-gray-500">Voice not supported</span>
-      </div>
+      <button
+        disabled
+        className="p-3 bg-gray-300 text-gray-500 rounded-xl cursor-not-allowed"
+        title="Voice input not supported in this browser"
+      >
+        <MicOff className="w-5 h-5" />
+      </button>
     );
   }
 
   return (
-    <div className="flex flex-col items-center space-y-2">
+    <div className="relative">
       <button
-        onClick={listening ? stopListening : startListening}
-        className={`relative p-4 rounded-full transition-all duration-300 transform hover:scale-105 ${
-          listening 
-            ? 'bg-red-500 text-white shadow-lg shadow-red-500/50 animate-pulse' 
-            : 'bg-blue-500 text-white shadow-lg shadow-blue-500/50 hover:bg-blue-600'
+        onClick={handleVoiceToggle}
+        className={`p-3 rounded-xl transition-all duration-200 ${
+          isListening
+            ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse'
+            : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700'
         }`}
-        title={listening ? 'Stop listening' : 'Start voice input'}
+        title={isListening ? 'Stop listening' : 'Start voice input'}
       >
-        {listening ? (
-          <MicOff className="w-6 h-6" />
-        ) : (
-          <Mic className="w-6 h-6" />
-        )}
+        {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
       </button>
-      
-      {listening && (
-        <div className="text-center">
-          <div className="flex space-x-1 justify-center mb-2">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+
+      {/* Voice indicator */}
+      {isListening && (
+        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
+          <div className="bg-red-100 border border-red-200 rounded-lg px-3 py-2 shadow-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-xs text-red-700 font-medium">Listening...</span>
+            </div>
+            {interimTranscript && (
+              <div className="mt-1 text-xs text-red-600 max-w-xs">
+                "{interimTranscript}"
+              </div>
+            )}
           </div>
-          <p className="text-xs text-gray-600">Listening...</p>
-        </div>
-      )}
-      
-      {transcript && !listening && (
-        <div className="mt-2 p-2 bg-green-50 rounded-lg max-w-xs">
-          <p className="text-xs text-green-800 font-medium">Heard: "{transcript}"</p>
         </div>
       )}
     </div>

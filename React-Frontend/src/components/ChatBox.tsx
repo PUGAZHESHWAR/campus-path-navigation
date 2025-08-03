@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, MicOff, Volume2, MapPin, Navigation, Clock, Info } from 'lucide-react';
+import { Send, Mic, MicOff, Volume2, MapPin, Navigation, Clock, Info, Bot, User, Sparkles, X, Play, Pause } from 'lucide-react';
 
 interface Message {
   id: string;
   text: string;
   isUser: boolean;
   timestamp: Date;
+  isTyping?: boolean;
 }
 
 interface ChatBoxProps {
@@ -17,7 +18,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Hello! I\'m your navigation assistant. How can I help you today?',
+      text: 'Hello! I\'m your AI navigation assistant. How can I help you find your way around campus today?',
       isUser: false,
       timestamp: new Date()
     }
@@ -25,7 +26,10 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentUtterance, setCurrentUtterance] = useState<SpeechSynthesisUtterance | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     setIsSupported('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
@@ -37,7 +41,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
 
   useEffect(() => {
     if (selectedDestination) {
-      const botResponse = `Great! I've set your destination to ${selectedDestination}. The route is now displayed on the map. You can see the optimal path with start and end markers.`;
+      const botResponse = `Perfect! I've set your destination to ${selectedDestination}. The optimal route is now displayed on the map with detailed navigation information.`;
       addBotMessage(botResponse);
       speakMessage(botResponse);
     }
@@ -45,6 +49,14 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const stopCurrentSpeech = () => {
+    if (currentUtterance) {
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setCurrentUtterance(null);
+    }
   };
 
   const addUserMessage = (text: string) => {
@@ -69,9 +81,48 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
 
   const speakMessage = (text: string) => {
     if ('speechSynthesis' in window) {
+      // Stop any current speech
+      stopCurrentSpeech();
+      
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
+      
+      // Get available voices and select a better one
+      const voices = speechSynthesis.getVoices();
+      const preferredVoice = voices.find(voice => 
+        voice.name.includes('Samantha') || 
+        voice.name.includes('Alex') || 
+        voice.name.includes('Google') ||
+        voice.name.includes('Microsoft') ||
+        voice.name.includes('Karen') ||
+        voice.name.includes('Daniel') ||
+        voice.name.includes('Victoria') ||
+        voice.name.includes('David')
+      ) || voices[0];
+      
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+      
+      // Faster, more natural AI-like speech
+      utterance.rate = 1.1;
+      utterance.pitch = 1.2;
+      utterance.volume = 0.95;
+      
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        setCurrentUtterance(utterance);
+      };
+      
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        setCurrentUtterance(null);
+      };
+      
+      utterance.onerror = () => {
+        setIsSpeaking(false);
+        setCurrentUtterance(null);
+      };
+      
       speechSynthesis.speak(utterance);
     }
   };
@@ -89,24 +140,27 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
     let response = '';
 
     if (lowerInput.includes('hello') || lowerInput.includes('hi')) {
-      response = 'Hello! How can I help you with navigation today?';
+      response = 'Hello! I\'m here to help you navigate around campus. You can ask me about destinations, routes, or use voice commands for hands-free navigation.';
     } else if (lowerInput.includes('destination') || lowerInput.includes('where')) {
-      response = 'You can select a destination from the dropdown menu or use voice commands. Try saying "Navigate to [destination name]" or use the quick actions below.';
+      response = 'You can select a destination from the dropdown menu or use voice commands. Try saying "Navigate to [destination name]" or use the quick actions below for popular locations.';
     } else if (lowerInput.includes('navigate') || lowerInput.includes('go to')) {
       const destinationMatch = input.match(/navigate to (.+)/i) || input.match(/go to (.+)/i);
       if (destinationMatch) {
         const destination = destinationMatch[1];
         onDestinationSelect(destination);
-        response = `Setting destination to ${destination}. Please check the dropdown to confirm the selection.`;
+        response = `Setting destination to ${destination}. The route is now being calculated and displayed on the map.`;
       } else {
-        response = 'Please specify a destination. For example: "Navigate to CSE Block" or "Go to Biotech Block"';
+        response = 'Please specify a destination. For example: "Navigate to CSE Block" or "Go to Biotech Block". You can also use the quick actions below.';
       }
     } else if (lowerInput.includes('help') || lowerInput.includes('what can you do')) {
-      response = 'I can help you with navigation! I can set destinations, provide route information, and answer questions about campus locations. Try using the quick actions or voice commands.';
+      response = 'I\'m your AI navigation assistant! I can help you set destinations, provide route information, answer questions about campus locations, and offer real-time navigation guidance. Try using voice commands or the quick actions for a seamless experience.';
     } else if (lowerInput.includes('route') || lowerInput.includes('path')) {
-      response = 'The route is displayed on the map with colored dots and lines. Green markers show the start point, red markers show the destination, and the orange line shows the optimal path.';
+      response = 'The route is displayed on the map with interactive markers. Green markers show your starting point, red markers indicate the destination, and the orange path shows the optimal route with distance and time information.';
+    } else if (lowerInput.includes('stop') || lowerInput.includes('cancel')) {
+      stopCurrentSpeech();
+      response = 'I\'ve stopped the current voice response. How else can I help you?';
     } else {
-      response = 'I\'m here to help with navigation! You can ask me to set destinations, get route information, or use the quick actions below.';
+      response = 'I\'m here to help with navigation! You can ask me to set destinations, get route information, or use the quick actions below for popular locations.';
     }
 
     setTimeout(() => {
@@ -121,6 +175,9 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
       return;
     }
 
+    // Stop any current speech when starting voice input
+    stopCurrentSpeech();
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
 
@@ -130,9 +187,10 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
 
     recognition.onstart = () => {
       setIsListening(true);
+      recognitionRef.current = recognition;
     };
 
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: any) => {
       let finalTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
@@ -141,127 +199,226 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
       }
       if (finalTranscript) {
         setInputText(finalTranscript);
+        addUserMessage(finalTranscript);
+        processUserInput(finalTranscript);
+        setInputText('');
       }
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
     };
 
     recognition.start();
   };
 
+  const stopVoiceInput = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      recognitionRef.current = null;
+    }
+  };
+
   const quickActions = [
-    { text: 'Show Route Info', icon: Info, action: () => {
-      const response = 'The route shows the optimal path between your current location and destination. Distance and point count are displayed in the top-left corner.';
-      addBotMessage(response);
-      speakMessage(response);
-    }},
-    { text: 'Navigate to CSE Block', icon: MapPin, action: () => {
-      onDestinationSelect('CSE Block');
-      addUserMessage('Navigate to CSE Block');
-    }},
-    { text: 'Navigate to Biotech Block', icon: MapPin, action: () => {
-      onDestinationSelect('Biotech Block');
-      addUserMessage('Navigate to Biotech Block');
-    }},
-    { text: 'Show All Destinations', icon: Navigation, action: () => {
-      const response = 'Available destinations include: CSE Block, Biotech Block, ECE Block, EEE Block, IT Block, Civil Block, Mechanical Dept, and many more. You can select from the dropdown menu.';
-      addBotMessage(response);
-      speakMessage(response);
-    }},
-    { text: 'Route Distance', icon: Clock, action: () => {
-      const response = selectedDestination 
-        ? `The route to ${selectedDestination} shows the distance in kilometers. Check the top-left corner of the map for exact details.`
-        : 'Please select a destination first to see the route distance.';
-      addBotMessage(response);
-      speakMessage(response);
-    }}
+    { 
+      text: 'Route Information', 
+      icon: Info, 
+      action: () => {
+        const response = 'The route displays the optimal path between your current location and destination. You can see distance, estimated time, and turn-by-turn navigation details on the map.';
+        addBotMessage(response);
+        speakMessage(response);
+      }
+    },
+    { 
+      text: 'Navigate to CSE Block', 
+      icon: MapPin, 
+      action: () => {
+        onDestinationSelect('CSE Block');
+        addUserMessage('Navigate to CSE Block');
+      }
+    },
+    { 
+      text: 'Navigate to Biotech Block', 
+      icon: MapPin, 
+      action: () => {
+        onDestinationSelect('Biotech Block');
+        addUserMessage('Navigate to Biotech Block');
+      }
+    },
+    { 
+      text: 'Available Destinations', 
+      icon: Navigation, 
+      action: () => {
+        const response = 'Available destinations include: CSE Block, Biotech Block, ECE Block, EEE Block, IT Block, Civil Block, Mechanical Dept, Library, Cafeteria, and many more campus locations. You can select from the dropdown menu or use voice commands.';
+        addBotMessage(response);
+        speakMessage(response);
+      }
+    },
+    { 
+      text: 'Route Distance', 
+      icon: Clock, 
+      action: () => {
+        const response = selectedDestination 
+          ? `The route to ${selectedDestination} shows the distance in kilometers with detailed path information. Check the top-left corner of the map for exact distance and navigation details.`
+          : 'Please select a destination first to see the route distance and navigation information.';
+        addBotMessage(response);
+        speakMessage(response);
+      }
+    }
   ];
 
   return (
-    <div className="h-full bg-white flex flex-col overflow-hidden">
+    <div className="h-full bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex-shrink-0">
-        <h3 className="text-lg font-semibold text-gray-800">Navigation Assistant</h3>
-        <p className="text-sm text-gray-600">Ask me about routes, destinations, and navigation</p>
+      <div className="p-6 border-b border-gray-200 flex-shrink-0 bg-white/80 backdrop-blur-sm">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <Bot className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">AI Navigation Assistant</h3>
+            <p className="text-sm text-gray-600 flex items-center">
+              <Sparkles className="w-3 h-3 mr-1" />
+              Powered by AI • Voice Enabled
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
         {messages.map((message) => (
           <div
             key={message.id}
             className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
           >
-            <div
-              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                message.isUser
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-800'
-              }`}
-            >
-              <p className="text-sm">{message.text}</p>
-              <p className={`text-xs mt-1 ${
-                message.isUser ? 'text-blue-100' : 'text-gray-500'
+            <div className={`flex items-start space-x-3 max-w-xs lg:max-w-md ${message.isUser ? 'flex-row-reverse space-x-reverse' : ''}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                message.isUser 
+                  ? 'bg-blue-500' 
+                  : 'bg-gradient-to-r from-blue-500 to-purple-600'
               }`}>
-                {message.timestamp.toLocaleTimeString()}
-              </p>
+                {message.isUser ? (
+                  <User className="w-4 h-4 text-white" />
+                ) : (
+                  <Bot className="w-4 h-4 text-white" />
+                )}
+              </div>
+              <div
+                className={`px-4 py-3 rounded-2xl shadow-sm ${
+                  message.isUser
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-gray-800 border border-gray-200'
+                }`}
+              >
+                <p className="text-sm leading-relaxed">{message.text}</p>
+                <p className={`text-xs mt-2 ${
+                  message.isUser ? 'text-blue-100' : 'text-gray-500'
+                }`}>
+                  {message.timestamp.toLocaleTimeString()}
+                </p>
+              </div>
             </div>
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Voice Animation Control */}
+      {isSpeaking && (
+        <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-t border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {/* Google-style voice animation */}
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-8 bg-blue-500 rounded-full voice-wave"></div>
+                <div className="w-2 h-8 bg-blue-500 rounded-full voice-wave"></div>
+                <div className="w-2 h-8 bg-blue-500 rounded-full voice-wave"></div>
+                <div className="w-2 h-8 bg-blue-500 rounded-full voice-wave"></div>
+                <div className="w-2 h-8 bg-blue-500 rounded-full voice-wave"></div>
+              </div>
+              <span className="text-sm text-blue-700 font-medium gradient-text">AI is speaking...</span>
+            </div>
+            <button
+              onClick={stopCurrentSpeech}
+              className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-all duration-200 voice-pulse"
+              title="Stop speaking"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
-      <div className="p-4 border-t border-gray-200 flex-shrink-0">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Quick Actions</h4>
-        <div className="grid grid-cols-2 gap-2">
+      <div className="p-6 border-t border-gray-200 flex-shrink-0 bg-white/80 backdrop-blur-sm">
+        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+          <Sparkles className="w-4 h-4 mr-2" />
+          Quick Actions
+        </h4>
+        <div className="grid grid-cols-2 gap-3">
           {quickActions.map((action, index) => (
             <button
               key={index}
               onClick={action.action}
-              className="flex items-center space-x-2 px-3 py-2 text-xs bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+              className="flex items-center space-x-2 px-4 py-3 text-xs bg-white hover:bg-gray-50 border border-gray-200 rounded-xl transition-all duration-200 hover:shadow-sm"
             >
-              <action.icon className="w-4 h-4" />
-              <span>{action.text}</span>
+              <action.icon className="w-4 h-4 text-blue-600" />
+              <span className="font-medium">{action.text}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-gray-200 flex-shrink-0">
-        <div className="flex space-x-2">
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder="Type your message..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
+      <div className="p-6 border-t border-gray-200 flex-shrink-0 bg-white/80 backdrop-blur-sm">
+        <div className="flex space-x-3">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              placeholder="Type your message or use voice..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            />
+          </div>
           <button
-            onClick={handleVoiceInput}
-            disabled={isListening || !isSupported}
-            className={`p-2 rounded-lg transition-colors duration-200 ${
+            onClick={isListening ? stopVoiceInput : handleVoiceInput}
+            disabled={!isSupported}
+            className={`p-3 rounded-xl transition-all duration-200 ${
               isListening
-                ? 'bg-red-500 text-white'
+                ? 'bg-red-500 text-white hover:bg-red-600 voice-input-active enhanced-pulse'
                 : isSupported
-                ? 'bg-blue-500 text-white hover:bg-blue-600'
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
           </button>
           <button
             onClick={handleSendMessage}
             disabled={!inputText.trim()}
-            className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
+            className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-5 h-5" />
           </button>
         </div>
+        {isListening && (
+          <div className="mt-3 text-center">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs voice-input-active">
+              <div className="w-2 h-2 bg-red-500 rounded-full enhanced-pulse"></div>
+              <span>Listening...</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

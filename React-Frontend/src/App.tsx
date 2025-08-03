@@ -54,7 +54,7 @@ function App() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Controls */}
-        <div className="w-80 bg-white shadow-lg flex flex-col overflow-hidden">
+        <div className="w-96 bg-white shadow-lg flex flex-col overflow-hidden">
           <DestinationSearch 
             onDestinationSelect={handleDestinationSelect}
             selectedDestination={selectedDestination}
@@ -70,7 +70,7 @@ function App() {
         </div>
 
         {/* Right Side - ChatBox */}
-        <div className="w-80 bg-gray-50 border-l border-gray-200 overflow-hidden">
+        <div className="w-96 bg-gray-50 border-l border-gray-200 overflow-hidden">
           <ChatBox 
             selectedDestination={selectedDestination}
             onDestinationSelect={handleDestinationSelect}

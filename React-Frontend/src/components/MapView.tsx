@@ -120,22 +120,38 @@ const MapController: React.FC<{
       map.invalidateSize();
     }, 100);
 
-    if (activeRoute && activeRoute.path.length > 0) {
-      // Create bounds that include the entire route
+    if (activeRoute && activeRoute.path.length > 0 && currentLocation) {
+      // Create bounds that include the entire route plus some padding
+      const routePoints = activeRoute.path.map(point => [point.lat, point.lon] as [number, number]);
       const bounds = L.latLngBounds([
-        ...activeRoute.path.map(point => [point.lat, point.lon] as [number, number]),
-        ...(currentLocation ? [currentLocation] : [])
+        ...routePoints,
+        currentLocation
       ]);
 
-      // Add some padding to the bounds
+      // Add padding and set appropriate zoom level
       map.fitBounds(bounds, { 
-        padding: [20, 20],
+        padding: [50, 50], // More padding for better view
         maxZoom: 18,
-        animate: true
+        animate: true,
+        duration: 1.5 // Smooth animation duration
       });
+
+      // Ensure the map stays within reasonable bounds
+      setTimeout(() => {
+        if (map.getZoom() > 18) {
+          map.setZoom(18);
+        }
+        if (map.getZoom() < 14) {
+          map.setZoom(14);
+        }
+      }, 1600);
+
     } else if (currentLocation) {
-      // If no route, just center on current location
-      map.setView(currentLocation, 16, { animate: true });
+      // If no route, just center on current location with appropriate zoom
+      map.setView(currentLocation, 16, { 
+        animate: true,
+        duration: 1.5
+      });
     }
 
     return () => clearTimeout(timer);
@@ -242,17 +258,17 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
           selectedDestination={selectedDestination}
         />
 
-        {/* Road points as dots with click functionality */}
+        {/* Static road points - no animations to prevent shaking */}
         {pinkPoints.map((point) => (
           <CircleMarker
             key={`pink-${point.id}`}
             center={[point.lat, point.lon]}
-            radius={4}
+            radius={3}
             fillColor="#ec4899"
             color="#ec4899"
             weight={1}
-            opacity={1}
-            fillOpacity={0.8}
+            opacity={0.8}
+            fillOpacity={0.6}
             eventHandlers={{
               click: () => {
                 alert(`Point ID: ${point.id}\nColour: ${point.colour}`);
@@ -265,12 +281,12 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
           <CircleMarker
             key={`blue-${point.id}`}
             center={[point.lat, point.lon]}
-            radius={4}
+            radius={3}
             fillColor="#3b82f6"
             color="#3b82f6"
             weight={1}
-            opacity={1}
-            fillOpacity={0.8}
+            opacity={0.8}
+            fillOpacity={0.6}
             eventHandlers={{
               click: () => {
                 alert(`Point ID: ${point.id}\nColour: ${point.colour}`);
@@ -314,17 +330,18 @@ const MapView: React.FC<MapViewProps> = ({ selectedDestination, currentLocation 
           </Marker>
         )}
 
-        {/* Active route with blinking markers */}
+        {/* Active route with blinking markers - only animate the route path */}
         {activeRoute && activeRoute.path.length > 0 && (
           <>
             <Polyline
               positions={activeRoute.path.map(p => [p.lat, p.lon] as [number, number])}
               color="#f59e0b"
-              weight={8}
+              weight={6}
               opacity={0.9}
               className="animate-pulse"
             />
             
+            {/* Only animate route path markers, not all road points */}
             {activeRoute.path.map((point, index) => (
               <BlinkingMarker
                 key={`route-${point.id}`}

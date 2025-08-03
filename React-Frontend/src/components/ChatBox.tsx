@@ -41,7 +41,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
 
   useEffect(() => {
     if (selectedDestination) {
-      const botResponse = `Perfect! I've set your destination to ${selectedDestination}. The optimal route is now displayed on the map with detailed navigation information.`;
+      const botResponse = `Excellent! I've set your destination to ${selectedDestination}. The map is now zooming to show you the complete route from your current location to ${selectedDestination}. You can see the optimal path highlighted in orange, with your starting point marked in green and the destination in red. The route includes detailed distance and navigation information.`;
       addBotMessage(botResponse);
       speakMessage(botResponse);
     }
@@ -86,27 +86,36 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
       
       const utterance = new SpeechSynthesisUtterance(text);
       
-      // Get available voices and select a better one
+      // Get available voices and prioritize smooth, clear female voices
       const voices = speechSynthesis.getVoices();
       const preferredVoice = voices.find(voice => 
+        // Prioritize smooth, clear female voices
         voice.name.includes('Samantha') || 
-        voice.name.includes('Alex') || 
+        voice.name.includes('Victoria') ||
+        voice.name.includes('Karen') ||
+        voice.name.includes('Alexandra') ||
+        voice.name.includes('Emma') ||
+        voice.name.includes('Sophie') ||
+        voice.name.includes('Google UK English Female') ||
+        voice.name.includes('Microsoft Zira') ||
+        voice.name.includes('Microsoft Eva') ||
+        voice.name.includes('Google US English Female') ||
+        voice.name.includes('Google UK English Female') ||
+        // Fallback to other good voices
         voice.name.includes('Google') ||
         voice.name.includes('Microsoft') ||
-        voice.name.includes('Karen') ||
-        voice.name.includes('Daniel') ||
-        voice.name.includes('Victoria') ||
-        voice.name.includes('David')
+        voice.name.includes('Alex') ||
+        voice.name.includes('Daniel')
       ) || voices[0];
       
       if (preferredVoice) {
         utterance.voice = preferredVoice;
       }
       
-      // Faster, more natural AI-like speech
-      utterance.rate = 1.1;
-      utterance.pitch = 1.2;
-      utterance.volume = 0.95;
+      // Smooth, clear, natural speech settings
+      utterance.rate = 0.95;       // Slightly slower for clarity
+      utterance.pitch = 1.05;      // Natural pitch for clear female voice
+      utterance.volume = 0.95;     // Clear volume
       
       utterance.onstart = () => {
         setIsSpeaking(true);
@@ -140,27 +149,27 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
     let response = '';
 
     if (lowerInput.includes('hello') || lowerInput.includes('hi')) {
-      response = 'Hello! I\'m here to help you navigate around campus. You can ask me about destinations, routes, or use voice commands for hands-free navigation.';
+      response = 'Hello there! I\'m your AI navigation assistant, ready to help you find your way around campus. I can guide you to any destination, provide detailed route information, and offer real-time navigation assistance. You can use voice commands or text input for a seamless experience.';
     } else if (lowerInput.includes('destination') || lowerInput.includes('where')) {
-      response = 'You can select a destination from the dropdown menu or use voice commands. Try saying "Navigate to [destination name]" or use the quick actions below for popular locations.';
+      response = 'You can easily select a destination from the dropdown menu, or use voice commands for a more natural experience. Try saying something like "Navigate to CSE Block" or "Take me to the Library". When you select a destination, the map will automatically zoom to show you the complete route with detailed navigation information.';
     } else if (lowerInput.includes('navigate') || lowerInput.includes('go to')) {
       const destinationMatch = input.match(/navigate to (.+)/i) || input.match(/go to (.+)/i);
       if (destinationMatch) {
         const destination = destinationMatch[1];
         onDestinationSelect(destination);
-        response = `Setting destination to ${destination}. The route is now being calculated and displayed on the map.`;
+        response = `Perfect! I've set your destination to ${destination}. The map is now zooming to show you the complete route from your current location to ${destination}. You'll see the optimal path highlighted in orange, with your starting point marked in green and the destination in red. The route includes detailed distance and turn-by-turn navigation information.`;
       } else {
-        response = 'Please specify a destination. For example: "Navigate to CSE Block" or "Go to Biotech Block". You can also use the quick actions below.';
+        response = 'Please specify a destination for me to navigate to. For example, you can say "Navigate to CSE Block" or "Go to Biotech Block". When you do, the map will automatically zoom to show you the complete route with all the navigation details.';
       }
     } else if (lowerInput.includes('help') || lowerInput.includes('what can you do')) {
-      response = 'I\'m your AI navigation assistant! I can help you set destinations, provide route information, answer questions about campus locations, and offer real-time navigation guidance. Try using voice commands or the quick actions for a seamless experience.';
+      response = 'I\'m your AI navigation assistant, designed to make campus navigation effortless and intuitive! I can help you set destinations, provide detailed route information with distance and time estimates, answer questions about campus locations, and offer real-time navigation guidance. When you select a destination, the map automatically zooms to show you the complete route with clear visual markers. Try using voice commands or the quick actions for a seamless experience.';
     } else if (lowerInput.includes('route') || lowerInput.includes('path')) {
-      response = 'The route is displayed on the map with interactive markers. Green markers show your starting point, red markers indicate the destination, and the orange path shows the optimal route with distance and time information.';
+      response = 'The route is beautifully displayed on the map with interactive markers and clear visual indicators. Green markers show your starting point, red markers indicate your destination, and the orange path shows the optimal route with distance and time information. The map automatically zooms to show you the complete journey from start to finish.';
     } else if (lowerInput.includes('stop') || lowerInput.includes('cancel')) {
       stopCurrentSpeech();
-      response = 'I\'ve stopped the current voice response. How else can I help you?';
+      response = 'I\'ve stopped the current voice response. How else can I assist you with navigation today? I\'m here to help you find your way around campus with clear directions and detailed route information.';
     } else {
-      response = 'I\'m here to help with navigation! You can ask me to set destinations, get route information, or use the quick actions below for popular locations.';
+      response = 'I\'m here to help with all your navigation needs! You can ask me to set destinations, get detailed route information, or use the quick actions below for popular locations. When you select a destination, the map will automatically zoom to show you the complete route with clear visual guidance. Feel free to use voice commands for a more natural experience.';
     }
 
     setTimeout(() => {
@@ -231,7 +240,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
       text: 'Route Information', 
       icon: Info, 
       action: () => {
-        const response = 'The route displays the optimal path between your current location and destination. You can see distance, estimated time, and turn-by-turn navigation details on the map.';
+        const response = 'The route displays the optimal path between your current location and destination with beautiful visual indicators. You can see distance, estimated time, and turn-by-turn navigation details clearly presented on the map. When you select a destination, the map automatically zooms to show you the complete journey with all the important navigation information.';
         addBotMessage(response);
         speakMessage(response);
       }
@@ -256,7 +265,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
       text: 'Available Destinations', 
       icon: Navigation, 
       action: () => {
-        const response = 'Available destinations include: CSE Block, Biotech Block, ECE Block, EEE Block, IT Block, Civil Block, Mechanical Dept, Library, Cafeteria, and many more campus locations. You can select from the dropdown menu or use voice commands.';
+        const response = 'Available destinations include: CSE Block, Biotech Block, ECE Block, EEE Block, IT Block, Civil Block, Mechanical Department, Library, Cafeteria, and many more campus locations. When you select any destination, the map will automatically zoom to show you the complete route with clear visual markers and detailed navigation information. You can select from the dropdown menu or use voice commands for a more natural experience.';
         addBotMessage(response);
         speakMessage(response);
       }
@@ -266,8 +275,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({ selectedDestination, onDestinationSel
       icon: Clock, 
       action: () => {
         const response = selectedDestination 
-          ? `The route to ${selectedDestination} shows the distance in kilometers with detailed path information. Check the top-left corner of the map for exact distance and navigation details.`
-          : 'Please select a destination first to see the route distance and navigation information.';
+          ? `The route to ${selectedDestination} shows the distance in kilometers with detailed path information. You can check the top-left corner of the map for exact distance and navigation details. The map automatically zooms to show you the complete journey with clear visual indicators for the optimal path.`
+          : 'Please select a destination first to see the route distance and navigation information. When you do, the map will automatically zoom to show you the complete route with all the important details.';
         addBotMessage(response);
         speakMessage(response);
       }

@@ -62,27 +62,36 @@ export const useVoice = () => {
       
       const utterance = new SpeechSynthesisUtterance(text);
       
-      // Get available voices and select a better one
+      // Get available voices and prioritize smooth, clear female voices
       const voices = speechSynthesis.getVoices();
       const preferredVoice = voices.find(voice => 
+        // Prioritize smooth, clear female voices
         voice.name.includes('Samantha') || 
-        voice.name.includes('Alex') || 
+        voice.name.includes('Victoria') ||
+        voice.name.includes('Karen') ||
+        voice.name.includes('Alexandra') ||
+        voice.name.includes('Emma') ||
+        voice.name.includes('Sophie') ||
+        voice.name.includes('Google UK English Female') ||
+        voice.name.includes('Microsoft Zira') ||
+        voice.name.includes('Microsoft Eva') ||
+        voice.name.includes('Google US English Female') ||
+        voice.name.includes('Google UK English Female') ||
+        // Fallback to other good voices
         voice.name.includes('Google') ||
         voice.name.includes('Microsoft') ||
-        voice.name.includes('Karen') ||
-        voice.name.includes('Daniel') ||
-        voice.name.includes('Victoria') ||
-        voice.name.includes('David')
+        voice.name.includes('Alex') ||
+        voice.name.includes('Daniel')
       ) || voices[0];
       
       if (preferredVoice) {
         utterance.voice = preferredVoice;
       }
       
-      // Faster, more natural AI-like speech
-      utterance.rate = 1.1;
-      utterance.pitch = 1.2;
-      utterance.volume = 0.95;
+      // Smooth, clear, natural speech settings
+      utterance.rate = 0.95;       // Slightly slower for clarity
+      utterance.pitch = 1.05;      // Natural pitch for clear female voice
+      utterance.volume = 0.95;     // Clear volume
       
       utterance.onstart = () => {
         setIsSpeaking(true);
